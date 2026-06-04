@@ -19,6 +19,7 @@ Give the model a todo list it can keep across long sessions. `rpiv-todo` adds th
 - **Status states** - pending, in_progress, completed, plus a deleted tombstone for audit.
 - **Dependency tracking** - `blockedBy` with cycle detection, so the model can sequence work.
 - **Smart truncation** - 12-line collapse threshold; completed tasks drop first, pending tasks stay visible last.
+- **Continuation guard on normal stops** - when the model ends normally but unfinished todos remain, `rpiv-todo` prompts it to keep working. Aborted (`Esc`) and non-normal stops are not intercepted.
 
 ## Install
 

@@ -22,7 +22,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { I18N_NAMESPACE } from "./state/i18n-bridge.js";
 import { replayFromBranch } from "./state/replay.js";
-import { replaceState } from "./state/store.js";
+import { selectTodoCounts } from "./state/selectors.js";
+import { getState, replaceState } from "./state/store.js";
 import { registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
 import { TodoOverlay } from "./todo-overlay.js";
 
@@ -108,5 +109,24 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("agent_start", async () => {
 		todoOverlay?.hideCompletedTasksFromPreviousTurn();
+	});
+
+	pi.on("agent_end", async (event) => {
+		// The agent core awaits agent_end handlers before transitioning to
+		// idle, so sendUserMessage must be deferred — calling it inline
+		// while isStreaming is still true will throw.
+		const lastAssistant = [...event.messages].reverse().find(
+			(m) => "role" in m && (m as { role: string }).role === "assistant",
+		) as { stopReason?: string } | undefined;
+		if (!lastAssistant || lastAssistant.stopReason !== "stop") return;
+
+		const counts = selectTodoCounts(getState());
+		if (counts.pending === 0 && counts.inProgress === 0) return;
+
+		setTimeout(() => {
+			pi.sendUserMessage(
+				"You have unfinished todos, you must continue until you have completed your task. If you need to ask the user a question, you must use the ask_user tool",
+			);
+		}, 0);
 	});
 }
