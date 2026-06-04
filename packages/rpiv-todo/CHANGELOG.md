@@ -5,6 +5,12 @@ All notable changes to `@juicesharp/rpiv-todo` are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Automatic continuation guard: when the model stops normally (`stopReason === "stop"`) with any pending or in-progress todos remaining, `rpiv-todo` sends a follow-up message so the agent keeps working. Aborted (`Esc`) and non-normal stop reasons (`length`, `toolUse`, `error`) are not intercepted.
+
 ## [2.9.0] - 2026-09-01
 
 ## [2.8.0] - 2026-08-29

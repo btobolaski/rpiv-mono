@@ -48,6 +48,9 @@ by status.
 - **The plan stays on screen.** A panel above the editor shows every task with a
   status glyph, the label of whatever is in progress, and a `Todos (done/total)`
   heading — you never have to ask the agent where it is.
+- **The agent keeps working through unfinished todos.** A normal stop with pending
+  or in-progress tasks prompts the agent to continue; aborts and non-normal stops
+  are left alone.
 - **Tasks survive `/reload` and compaction.** Each tool call carries the full
   post-mutation snapshot, and the list is replayed from the session branch. No
   disk writes, nothing to lose.
