@@ -35,7 +35,7 @@ import {
 	setActiveRenderSession,
 	sid,
 } from "./state/store.js";
-import { registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
+import { registerTodoAddCommand, registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
 import type { TodoOverlay } from "./todo-overlay.js";
 
 type I18nLoader = {
@@ -151,6 +151,7 @@ export default function (pi: ExtensionAPI, importOverlay: TodoOverlayImporter = 
 
 	registerTodoTool(pi);
 	registerTodosCommand(pi);
+	registerTodoAddCommand(pi, () => void updateTodoOverlay());
 
 	// Collapse/expand hotkey for the todo overlay. The key is resolved once at
 	// factory scope from config (register-once contract: a config change needs

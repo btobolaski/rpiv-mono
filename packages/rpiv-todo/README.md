@@ -9,8 +9,8 @@
   </a>
 </div>
 
-Give the model a task list you can see. `rpiv-todo` adds a `todo` tool, a
-`/todos` command, and a live panel above the editor to
+Give the model a task list you can see. `rpiv-todo` adds a `todo` tool,
+`/todos` and `/todo-add <subject>` commands, and a live panel above the editor to
 [Pi Agent](https://github.com/badlogic/pi-mono), so you always know what the
 agent is doing now, what it finished, and what is queued. The list is rebuilt
 from the conversation itself, so it survives `/reload` and compaction — useful
@@ -41,7 +41,7 @@ input box, updating as work moves:
 
 Press `ctrl+shift+t` to collapse the panel to its heading plus a one-line hint,
 and again to expand it. Run `/todos` at any time to print the full list grouped
-by status.
+by status, or `/todo-add <subject>` to add a pending task immediately.
 
 ## What you get
 
@@ -67,7 +67,8 @@ by status.
   detached or child session can neither read nor overwrite the foreground list.
 - **Localized UI, no setup required.** Nine locales ship with the package and
   activate when [`@juicesharp/rpiv-i18n`](https://www.npmjs.com/package/@juicesharp/rpiv-i18n)
-  is installed; without it, everything falls back to English.
+  is installed; without it, everything—including `/todo-add` notifications—falls
+  back to English.
 
 ## Configuration
 
