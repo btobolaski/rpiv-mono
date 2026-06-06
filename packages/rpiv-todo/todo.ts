@@ -23,8 +23,12 @@ import { buildToolResult } from "./tool/response-envelope.js";
 import {
 	COMMAND_NAME,
 	ERR_REQUIRES_INTERACTIVE,
+	ERR_TODO_ADD_EMPTY_SUBJECT,
+	ERR_TODO_ADD_REQUIRES_INTERACTIVE,
 	MSG_NO_TODOS,
+	MSG_TODO_ADD_CREATED,
 	type TaskMutationParams,
+	TODO_ADD_COMMAND_NAME,
 	TOOL_LABEL,
 	TOOL_NAME,
 	TodoParamsSchema,
@@ -47,7 +51,7 @@ export { applyTaskMutation } from "./state/state-reducer.js";
 export { __resetState, getNextId, getTodos } from "./state/store.js";
 export { deriveBlocks, detectCycle } from "./state/task-graph.js";
 export type { Task, TaskAction, TaskDetails, TaskStatus } from "./tool/types.js";
-export { TOOL_NAME } from "./tool/types.js";
+export { TOOL_NAME, TODO_ADD_COMMAND_NAME } from "./tool/types.js";
 
 /**
  * Backward-compat replay shim. Pre-refactor `reconstructTodoState(ctx)`
@@ -141,6 +145,60 @@ export function registerTodosCommand(pi: ExtensionAPI): void {
 			}
 
 			ctx.ui.notify(lines.join("\n"), "info");
+		},
+	});
+}
+
+// ---------------------------------------------------------------------------
+// /todo-add slash command
+// ---------------------------------------------------------------------------
+
+/**
+ * Register the `/todo-add <subject>` slash command.
+ *
+ * Durability model: tasks created via this command are committed to in-memory
+ * module state immediately. They are NOT directly written to the branch as a
+ * tool-result snapshot. However, the NEXT agent `todo` tool call captures ALL
+ * live tasks (including slash-command additions) in its `details.tasks`
+ * snapshot. That snapshot is read by `replayFromBranch` on session lifecycle
+ * events (start, compact, tree). The task is persisted as soon as the
+ * agent uses the `todo` tool, which typically happens within its next turn
+ * when tasks exist. Tasks are at risk of loss only if a session compact
+ * or reload occurs before the agent's next `todo` tool call.
+ */
+export function registerTodoAddCommand(pi: ExtensionAPI, onUpdate?: () => void): void {
+	pi.registerCommand(TODO_ADD_COMMAND_NAME, {
+		description: "Add a new todo to the current task list",
+		handler: async (args, ctx) => {
+			if (!ctx.hasUI) {
+				ctx.ui.notify(
+					t("command.todo_add.requires_interactive", ERR_TODO_ADD_REQUIRES_INTERACTIVE),
+					"error",
+				);
+				return;
+			}
+			const subject = args.trim();
+			if (!subject) {
+				ctx.ui.notify(t("command.todo_add.empty_subject", ERR_TODO_ADD_EMPTY_SUBJECT), "error");
+				return;
+			}
+			const before = getState();
+			const result = applyTaskMutation(before, "create", { subject });
+			commitState(result.state);
+
+			if (result.op.kind === "error") {
+				ctx.ui.notify(result.op.message, "error");
+				return;
+			}
+
+			const created = result.state.tasks.find((t) => t.id === result.op.taskId);
+			const template = t("command.todo_add.created", MSG_TODO_ADD_CREATED);
+			const msg = template
+				.replace("{{id}}", String(created?.id ?? result.op.taskId))
+				.replace("{{subject}}", created?.subject ?? subject);
+			ctx.ui.notify(msg, "info");
+
+			onUpdate?.();
 		},
 	});
 }

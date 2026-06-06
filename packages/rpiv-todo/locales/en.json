@@ -11,5 +11,9 @@
   "command.requires_interactive": "/todos requires interactive mode",
   "command.section.pending": "── Pending ──",
   "command.section.in_progress": "── In Progress ──",
-  "command.section.completed": "── Completed ──"
+  "command.section.completed": "── Completed ──",
+
+  "command.todo_add.requires_interactive": "/todo-add requires interactive mode",
+  "command.todo_add.empty_subject": "Subject is required. Usage: /todo-add <subject>",
+  "command.todo_add.created": "Created #{{id}}: {{subject}} (pending)"
 }

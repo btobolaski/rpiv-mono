@@ -8,7 +8,7 @@
   </a>
 </div>
 
-Give the model a todo list it can keep across long sessions. `rpiv-todo` adds the `todo` tool, the `/todos` slash command, and a live overlay above the editor to [Pi Agent](https://github.com/badlogic/pi-mono) - tasks survive `/reload` and conversation compaction, so the model picks up where it left off.
+Give the model a todo list it can keep across long sessions. `rpiv-todo` adds the `todo` tool, the `/todos` slash command, the `/todo-add <subject>` quick-add command, and a live overlay above the editor to [Pi Agent](https://github.com/badlogic/pi-mono). Tasks created by the `todo` tool survive `/reload` and compaction — `/todo-add` tasks update the live list immediately and become replay-persistent on the next `todo` tool call.
 
 ![Todo overlay widget above the Pi editor](https://raw.githubusercontent.com/juicesharp/rpiv-mono/main/packages/rpiv-todo/docs/overlay.jpg)
 
@@ -31,7 +31,7 @@ Then restart your Pi session.
 
 ### Optional: localization
 
-`rpiv-todo` works standalone - install only this package and you get the full English UI. Install `@juicesharp/rpiv-i18n` alongside it to flip the overlay heading, `/todos` section headers, and status words to your active locale:
+`rpiv-todo` works standalone - install only this package and you get the full English UI. Install `@juicesharp/rpiv-i18n` alongside it to flip the overlay heading, `/todos` section headers, status words, and `/todo-add` command notifications to your active locale:
 
 ```bash
 pi install npm:@juicesharp/rpiv-i18n
@@ -106,6 +106,7 @@ Returns:
 ## Commands
 
 - **`/todos`** - print the current todo list grouped by status.
+- **`/todo-add <subject>`** - add a new pending todo to the current task list. Successful adds refresh the live overlay.
 
 ## Overlay
 
@@ -117,7 +118,7 @@ truncate last. Auto-hides when the list is empty.
 
 ## Localization
 
-`rpiv-todo` localizes its TUI chrome (overlay heading, `/todos` section headers, status words) through `@juicesharp/rpiv-i18n` when the SDK is installed. Bundled locales: `de`, `en`, `es`, `fr`, `pt`, `pt-BR`, `ru`, `uk`. LLM-facing output (tool response envelope, reducer errors, schema descriptions) stays English by design.
+`rpiv-todo` localizes its TUI chrome (overlay heading, `/todos` section headers, status words, and `/todo-add` command notifications) through `@juicesharp/rpiv-i18n` when the SDK is installed. Bundled locales: `de`, `en`, `es`, `fr`, `pt`, `pt-BR`, `ru`, `uk`. LLM-facing output (tool response envelope, reducer errors, schema descriptions) stays English by design.
 
 The SDK is a soft optional peer - `rpiv-todo` loads it via dynamic import at module init. If the SDK isn't installed, every render call site returns its inline English fallback and the extension stays online with English UI; no warning, no crash. See the Install section for adding the SDK after the fact. To contribute or override translations, see the `@juicesharp/rpiv-i18n` README "Contributing translations" section.
 

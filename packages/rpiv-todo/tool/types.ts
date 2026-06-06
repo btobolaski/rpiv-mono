@@ -16,8 +16,15 @@ export const COMMAND_NAME = "todos";
 // User-facing strings (kept stable for /todos UX parity).
 // ---------------------------------------------------------------------------
 
+export const TODO_ADD_COMMAND_NAME = "todo-add";
+
 export const ERR_REQUIRES_INTERACTIVE = "/todos requires interactive mode";
 export const MSG_NO_TODOS = "No todos yet. Ask the agent to add some!";
+
+// i18n fallbacks for /todo-add command — used by t() when SDK is absent.
+export const ERR_TODO_ADD_REQUIRES_INTERACTIVE = "/todo-add requires interactive mode";
+export const ERR_TODO_ADD_EMPTY_SUBJECT = "Subject is required. Usage: /todo-add <subject>";
+export const MSG_TODO_ADD_CREATED = "Created #{{id}}: {{subject}} (pending)";
 
 // ---------------------------------------------------------------------------
 // Public domain types

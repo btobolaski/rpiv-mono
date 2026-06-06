@@ -13,5 +13,9 @@
   "command.requires_interactive": "/todos потребує інтерактивного режиму",
   "command.section.pending": "── Очікування ──",
   "command.section.in_progress": "── У роботі ──",
-  "command.section.completed": "── Виконано ──"
+  "command.section.completed": "── Виконано ──",
+
+  "command.todo_add.requires_interactive": "/todo-add потребує інтерактивного режиму",
+  "command.todo_add.empty_subject": "Тема обов'язкова. Використання: /todo-add <тема>",
+  "command.todo_add.created": "Створено #{{id}}: {{subject}} (очікування)"
 }

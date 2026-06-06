@@ -1,6 +1,6 @@
 /**
- * rpiv-todo — Pi extension. Registers the `todo` tool, `/todos` slash
- * command, and the persistent TodoOverlay widget.
+ * rpiv-todo — Pi extension. Registers the `todo` tool, `/todos` and
+ * `/todo-add` slash commands, and the persistent TodoOverlay widget.
  *
  * TUI chrome strings localize at render time via the i18n bridge. Strings are
  * registered with rpiv-i18n here, once, at module init — but only when the
@@ -24,7 +24,7 @@ import { I18N_NAMESPACE } from "./state/i18n-bridge.js";
 import { replayFromBranch } from "./state/replay.js";
 import { selectTodoCounts } from "./state/selectors.js";
 import { getState, replaceState } from "./state/store.js";
-import { registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
+import { registerTodoAddCommand, registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
 import { TodoOverlay } from "./todo-overlay.js";
 
 type I18nLoader = {
@@ -58,6 +58,7 @@ export default function (pi: ExtensionAPI) {
 
 	registerTodoTool(pi);
 	registerTodosCommand(pi);
+	registerTodoAddCommand(pi, () => todoOverlay?.update());
 
 	pi.on("session_start", async (_event, ctx) => {
 		replaceState(replayFromBranch(ctx));

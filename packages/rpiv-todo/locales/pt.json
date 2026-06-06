@@ -13,5 +13,9 @@
   "command.requires_interactive": "/todos requer modo interativo",
   "command.section.pending": "── Pendentes ──",
   "command.section.in_progress": "── Em curso ──",
-  "command.section.completed": "── Concluídas ──"
+  "command.section.completed": "── Concluídas ──",
+
+  "command.todo_add.requires_interactive": "/todo-add requer modo interativo",
+  "command.todo_add.empty_subject": "Assunto obrigatório. Uso: /todo-add <assunto>",
+  "command.todo_add.created": "Criada #{{id}}: {{subject}} (pendente)"
 }

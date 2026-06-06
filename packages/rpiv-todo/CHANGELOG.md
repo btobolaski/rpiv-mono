@@ -8,6 +8,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- New `/todo-add <subject>` slash command for creating a pending todo in the current task list. Successful adds refresh the live overlay.
 - Automatic continuation guard: when the model stops normally (`stopReason === "stop"`) with any pending or in-progress todos remaining, `rpiv-todo` sends a follow-up message so the agent keeps working. Aborted (`Esc`) and non-normal stop reasons (`length`, `toolUse`, `error`) are not intercepted.
 
 ### Fixed
