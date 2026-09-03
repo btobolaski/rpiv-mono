@@ -1,11 +1,9 @@
 import { createMockCtx, createMockPi } from "@juicesharp/rpiv-test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import registerTodo from "./index.js";
 import { replaceState as replaceSessionState } from "./state/store.js";
 import { __resetState } from "./todo.js";
 
-const CONTINUATION =
-	"You have unfinished todos, you must continue until you have completed your task. If you need to ask the user a question, you must use the ask_user tool";
 const SID = "test-session";
 
 function replaceState(state: Parameters<typeof replaceSessionState>[1]) {
@@ -37,14 +35,7 @@ function setup() {
 	return { pi, handler };
 }
 
-beforeEach(() => {
-	__resetState();
-	vi.useFakeTimers();
-});
-afterEach(() => {
-	vi.useRealTimers();
-	__resetState();
-});
+afterEach(__resetState);
 
 describe("agent_end — unfinished todo continuation", () => {
 	it.each(["pending", "in_progress"] as const)(
@@ -58,9 +49,15 @@ describe("agent_end — unfinished todo continuation", () => {
 
 			await handler({ messages: [assistant("stop")] } as never);
 
+			expect(pi.sendMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					customType: "rpiv-todo-continuation",
+					content: expect.stringContaining("not sent by the user"),
+					display: true,
+				}),
+				{ triggerTurn: true, deliverAs: "followUp" },
+			);
 			expect(pi.sendUserMessage).not.toHaveBeenCalled();
-			vi.advanceTimersByTime(0);
-			expect(pi.sendUserMessage).toHaveBeenCalledWith(CONTINUATION);
 		},
 	);
 
@@ -73,8 +70,7 @@ describe("agent_end — unfinished todo continuation", () => {
 
 		await handler({ messages: [assistant("stop")] } as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it("does not send when only deleted todos remain", async () => {
@@ -86,8 +82,7 @@ describe("agent_end — unfinished todo continuation", () => {
 
 		await handler({ messages: [assistant("stop")] } as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it("does not send when there are no todos at all", async () => {
@@ -95,8 +90,7 @@ describe("agent_end — unfinished todo continuation", () => {
 
 		await handler({ messages: [assistant("stop")] } as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it.each(["aborted", "length", "toolUse", "error", undefined] as const)(
@@ -110,8 +104,7 @@ describe("agent_end — unfinished todo continuation", () => {
 
 			await handler({ messages: [assistant(stopReason)] } as never);
 
-			vi.advanceTimersByTime(0);
-			expect(pi.sendUserMessage).not.toHaveBeenCalled();
+			expect(pi.sendMessage).not.toHaveBeenCalled();
 		},
 	);
 
@@ -128,8 +121,7 @@ describe("agent_end — unfinished todo continuation", () => {
 			messages: [assistant("stop"), userMessage(), assistant("aborted")],
 		} as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it("uses the last assistant message — continues when last is stop", async () => {
@@ -145,9 +137,7 @@ describe("agent_end — unfinished todo continuation", () => {
 			messages: [assistant("aborted"), userMessage(), assistant("stop")],
 		} as never);
 
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(CONTINUATION);
+		expect(pi.sendMessage).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not send when messages array is empty", async () => {
@@ -159,8 +149,7 @@ describe("agent_end — unfinished todo continuation", () => {
 
 		await handler({ messages: [] } as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it("does not send when messages has no assistant role entries", async () => {
@@ -172,7 +161,6 @@ describe("agent_end — unfinished todo continuation", () => {
 
 		await handler({ messages: [userMessage()] } as never);
 
-		vi.advanceTimersByTime(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
 });

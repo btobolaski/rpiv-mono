@@ -292,20 +292,23 @@ export default function (pi: ExtensionAPI, importOverlay: TodoOverlayImporter = 
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
-		// The agent core awaits agent_end handlers before transitioning to
-		// idle, so sendUserMessage must be deferred — calling it inline
-		// while isStreaming is still true will throw.
-		const lastAssistant = [...event.messages].reverse().find(
-			(m) => "role" in m && (m as { role: string }).role === "assistant",
-		) as { stopReason?: string } | undefined;
-		if (!lastAssistant || lastAssistant.stopReason !== "stop") return;
+		const lastAssistant = [...event.messages]
+			.reverse()
+			.find((m) => "role" in m && (m as { role: string }).role === "assistant") as
+			| { stopReason?: string }
+			| undefined;
+		if (lastAssistant?.stopReason !== "stop") return;
 
 		if (!selectHasActive(getState(sid(ctx)))) return;
 
-		setTimeout(() => {
-			pi.sendUserMessage(
-				"You have unfinished todos, you must continue until you have completed your task. If you need to ask the user a question, you must use the ask_user tool",
-			);
-		}, 0);
+		pi.sendMessage(
+			{
+				customType: "rpiv-todo-continuation",
+				content:
+					"[Automated rpiv-todo reminder — not sent by the user and does not represent a new request or changed user intent.] Unfinished todos remain. Continue working until all todos are completed. If user input is required, use the ask_user tool.",
+				display: true,
+			},
+			{ triggerTurn: true, deliverAs: "followUp" },
+		);
 	});
 }
