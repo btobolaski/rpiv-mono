@@ -90,7 +90,10 @@ export function createMockPi(options: CreateMockPiOptions = {}): MockPi {
 			({
 				name: `skill:${name}`,
 				source: "skill",
-				sourceInfo: { path: `/mock/skills/${name}/SKILL.md`, baseDir: `/mock/skills/${name}` },
+				sourceInfo: {
+					path: `/mock/skills/${name}/SKILL.md`,
+					baseDir: `/mock/skills/${name}`,
+				},
 			}) as unknown as RegisteredCommand,
 	);
 
@@ -114,12 +117,19 @@ export function createMockPi(options: CreateMockPiOptions = {}): MockPi {
 			list.push(handler);
 			captured.events.set(event, list);
 		}),
+		registerEntryRenderer: vi.fn(),
+		appendEntry: vi.fn(),
 		sendMessage: vi.fn(async () => {}),
 		sendUserMessage: vi.fn((_content: unknown, _options?: unknown) => {
 			// Sync fire-and-forget in production; mock captures nothing extra.
 			// Tests assert on sentMessages via the chain or directly on this spy.
 		}),
-		exec: vi.fn(async () => ({ stdout: "", stderr: "", code: 0, killed: false })),
+		exec: vi.fn(async () => ({
+			stdout: "",
+			stderr: "",
+			code: 0,
+			killed: false,
+		})),
 		getActiveTools: vi.fn(() => [...captured.activeTools]),
 		setActiveTools: vi.fn((names: string[]) => {
 			captured.activeTools = [...names];
@@ -161,7 +171,9 @@ export interface MockUI {
 }
 
 export function createMockUI(
-	overrides: Partial<Omit<ExtensionUIContext, "theme">> & { theme?: Theme | MockTheme } = {},
+	overrides: Partial<Omit<ExtensionUIContext, "theme">> & {
+		theme?: Theme | MockTheme;
+	} = {},
 ): MockUI {
 	return {
 		notify: vi.fn(),
@@ -193,7 +205,11 @@ export function createMockModelRegistry(models: Model<Api>[] = []) {
 	return {
 		find: vi.fn((provider: string, id: string) => models.find((m) => m.provider === provider && m.id === id)),
 		getAvailable: vi.fn(() => [...models]),
-		getApiKeyAndHeaders: vi.fn(async () => ({ ok: true, apiKey: "test-key", headers: {} })),
+		getApiKeyAndHeaders: vi.fn(async () => ({
+			ok: true,
+			apiKey: "test-key",
+			headers: {},
+		})),
 	};
 }
 
@@ -249,7 +265,10 @@ export function createMockCommandCtx(opts: MockCtxOptions = {}): MockWorkflowCtx
 		// the per-session partition — inheriting the parent's sid would mask it. A
 		// caller that needs an explicit child sid can pass `opts.childSessionId`.
 		const child = {
-			...createMockCtx({ ...opts, sessionId: opts.childSessionId ?? `${opts.sessionId ?? "test-session"}-child` }),
+			...createMockCtx({
+				...opts,
+				sessionId: opts.childSessionId ?? `${opts.sessionId ?? "test-session"}-child`,
+			}),
 			waitForIdle: vi.fn(async () => {}),
 			maxConcurrency: opts.maxConcurrency ?? 1,
 			sendUserMessage: vi.fn(async () => {}),
@@ -312,7 +331,10 @@ export interface MockSessionStep {
 	 * Absent ⇒ single-shot: the child's `toolTimeout()` stays at `step.toolTimeout`
 	 * and the branch never grows.
 	 */
-	onSend?: Array<{ branch?: unknown[]; toolTimeout?: { reason: string } | undefined }>;
+	onSend?: Array<{
+		branch?: unknown[];
+		toolTimeout?: { reason: string } | undefined;
+	}>;
 }
 
 export interface MockSessionChainOptions extends MockCtxOptions {
@@ -403,7 +425,10 @@ export function createMockSessionChain(opts: MockSessionChainOptions): MockSessi
 		branch: unknown[],
 		sessionFile?: string,
 		toolTimeout?: { reason: string },
-		onSend?: Array<{ branch?: unknown[]; toolTimeout?: { reason: string } | undefined }>,
+		onSend?: Array<{
+			branch?: unknown[];
+			toolTimeout?: { reason: string } | undefined;
+		}>,
 	): MockWorkflowCtx => {
 		const base = createMockCtx({
 			...opts,
@@ -470,7 +495,9 @@ export function createMockSessionChain(opts: MockSessionChainOptions): MockSessi
 			// shift both take effect.
 			const childBranch = onSend ? [...branch] : branch;
 			const onSendQueue = onSend ? [...onSend] : undefined;
-			const currentTimeout: { value: { reason: string } | undefined } = { value: toolTimeout };
+			const currentTimeout: { value: { reason: string } | undefined } = {
+				value: toolTimeout,
+			};
 			ctx.sendUserMessage = async (content: unknown) => {
 				// Delegate to the shared capture fn first (preserves `sentMessages` + any
 				// test `sendUserMessageFn.mockImplementation` override), THEN apply the

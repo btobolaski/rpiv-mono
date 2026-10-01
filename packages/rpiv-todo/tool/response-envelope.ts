@@ -1,3 +1,4 @@
+import { selectListTasks } from "../state/selectors.js";
 import type { TaskState } from "../state/state.js";
 import type { Op } from "../state/state-reducer.js";
 import { deriveBlocks } from "../state/task-graph.js";
@@ -16,13 +17,11 @@ function formatListLine(t: Task): string {
 }
 
 /**
- * Multi-line presentation for the `get` action. Order of rows is pinned by
- * pre-refactor `todo.ts:354-376` — description, activeForm, blockedBy, blocks,
- * owner — so envelope-level snapshot tests stay byte-equivalent.
+ * Shared detail rows for `get` output and history cards. Order is pinned by
+ * pre-refactor `todo.ts:354-376`; callers add headers and card-only metadata.
  */
-function formatGetLines(task: Task, state: TaskState): string {
-	const blocks = deriveBlocks(state.tasks).get(task.id) ?? [];
-	const lines = [`#${task.id} [${task.status}] ${sanitizeTerminalText(task.subject)}`];
+export function formatTaskDetailLines(task: Task, blocks: readonly number[]): string[] {
+	const lines: string[] = [];
 	if (task.description) lines.push(`  description: ${sanitizeTerminalText(task.description)}`);
 	if (task.activeForm) lines.push(`  activeForm: ${sanitizeTerminalText(task.activeForm)}`);
 	if (task.blockedBy?.length) {
@@ -32,7 +31,14 @@ function formatGetLines(task: Task, state: TaskState): string {
 		lines.push(`  blocks: ${blocks.map((id) => `#${id}`).join(", ")}`);
 	}
 	if (task.owner) lines.push(`  owner: ${sanitizeTerminalText(task.owner)}`);
-	return lines.join("\n");
+	return lines;
+}
+
+function formatGetLines(task: Task, state: TaskState): string {
+	return [
+		`#${task.id} [${task.status}] ${sanitizeTerminalText(task.subject)}`,
+		...formatTaskDetailLines(task, deriveBlocks(state.tasks).get(task.id) ?? []),
+	].join("\n");
 }
 
 /**
@@ -61,9 +67,7 @@ export function formatContent(op: Op, state: TaskState): string {
 		case "clear":
 			return `Cleared ${op.count} tasks`;
 		case "list": {
-			let view = state.tasks;
-			if (!op.includeDeleted) view = view.filter((t) => t.status !== "deleted");
-			if (op.statusFilter) view = view.filter((t) => t.status === op.statusFilter);
+			const view = selectListTasks(state, op.includeDeleted, op.statusFilter);
 			return view.length === 0 ? "No tasks" : view.map(formatListLine).join("\n");
 		}
 		case "get":
@@ -74,8 +78,8 @@ export function formatContent(op: Op, state: TaskState): string {
 }
 
 /**
- * Build the LLM-facing tool envelope after the store has committed the
- * reducer's new state. `details` is the persistence + replay snapshot —
+ * Build the LLM-facing tool envelope from the reducer's new state. The caller
+ * persists the snapshot before committing live state. `details` is the replay snapshot —
  * `state/replay.ts` consumes this exact shape on session lifecycle events.
  *
  * Mirrors `packages/rpiv-ask-user-question/tool/response-envelope.ts:13-47`.

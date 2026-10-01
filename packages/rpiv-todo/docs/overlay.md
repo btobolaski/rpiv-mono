@@ -1,4 +1,4 @@
-# Overlay and `/todos` display
+# History cards, overlay, and `/todos` display
 
 How
 [`@juicesharp/rpiv-todo`](https://www.npmjs.com/package/@juicesharp/rpiv-todo)
@@ -9,18 +9,35 @@ overflow is trimmed, and which strings localize.
 
 The widget is mounted above the Pi editor under the key `rpiv-todos`.
 
-| Stage | Condition |
-| --- | --- |
-| Created | At the first session start that has a UI. A headless session never creates it. |
-| Registered | Only while at least one overlay-visible task exists. The widget unregisters itself when the list empties, and re-registers when a task reappears. |
-| Bound | Only the foreground session's overlay is refreshed. A detached or child session has its own task state and never rebinds or repaints the foreground panel. |
-| Disposed | On the foreground session's shutdown. A child session shutting down leaves the overlay alone. |
+| Stage      | Condition                                                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Created    | At the first session start that has a UI. A headless session never creates it.                                                                             |
+| Registered | Only while at least one overlay-visible task exists. The widget unregisters itself when the list empties, and re-registers when a task reappears.          |
+| Bound      | Only the foreground session's overlay is refreshed. A detached or child session has its own task state and never rebinds or repaints the foreground panel. |
+| Disposed   | On the foreground session's shutdown. A child session shutting down leaves the overlay alone.                                                              |
 
 Task state is partitioned by session id, so parallel sessions cannot read or
-overwrite each other's lists. Nothing is written to disk: on session start,
-compaction, and session-tree changes, the list is rebuilt by walking the branch
-and taking the last `todo` tool result's snapshot, which replaces the whole list
-(last-write-wins).
+overwrite each other's lists. On session start, compaction, and session-tree
+changes, the list is rebuilt from the latest `rpiv-todo-snapshot` custom entry
+on the branch. These snapshots are stored in Pi's session history, not separate
+task files. Older sessions without snapshot entries fall back to the latest
+`todo` tool result.
+
+## History cards
+
+Every `todo` tool call appends a durable scrollback card, including calls made
+inside `codemode`. The card shows the affected task for `create`, `update`,
+`get`, and `delete`; `list` shows every task matching its status and tombstone
+filters. `clear`, empty lists, and rejected operations show a short message.
+
+Task cards include the id, subject, status, description, activity label, owner,
+`blockedBy`, reverse `blocks` edges, and metadata when present. Full details are
+visible without expanding tool output. Long text wraps to the terminal width;
+the overlay's row budget does not apply to history cards. Each card uses the
+snapshot from that call, so later updates cannot rewrite earlier cards.
+
+Cards use Pi's custom-entry renderer and do not enter model context or trigger
+another turn. Headless calls still persist snapshots for replay.
 
 ## Anatomy of a row
 

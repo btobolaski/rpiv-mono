@@ -15,6 +15,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadConfig, validateGuidanceFields } from "./config.js";
 import { formatStatusLabel, t } from "./state/i18n-bridge.js";
+import { isTaskDetails } from "./state/replay.js";
 import { selectTasksByStatus, selectTodoCounts, selectVisibleTasks } from "./state/selectors.js";
 import { applyTaskMutation } from "./state/state-reducer.js";
 import { commitState, getRenderState, getState, sid } from "./state/store.js";
@@ -26,13 +27,15 @@ import {
 	ERR_TODO_ADD_REQUIRES_INTERACTIVE,
 	MSG_NO_TODOS,
 	MSG_TODO_ADD_CREATED,
+	type TaskDetails,
 	type TaskMutationParams,
 	TODO_ADD_COMMAND_NAME,
+	TODO_HISTORY_ENTRY_TYPE,
 	TOOL_LABEL,
 	TOOL_NAME,
 	TodoParamsSchema,
 } from "./tool/types.js";
-import { formatCommandTaskLine, renderTodoCall, renderTodoResult } from "./view/format.js";
+import { formatCommandTaskLine, renderTodoCall, renderTodoHistory, renderTodoResult } from "./view/format.js";
 
 // English fallbacks for localized /todos section headers — the box-drawing
 // decoration is part of the localized string so translators can adjust spacing.
@@ -47,10 +50,21 @@ const SECTION_COMPLETED = "── Completed ──";
 
 export { isTransitionValid } from "./state/invariants.js";
 export { applyTaskMutation } from "./state/state-reducer.js";
-export { __resetState, getNextId, getTodos, setActiveRenderSession, sid } from "./state/store.js";
+export {
+	__resetState,
+	getNextId,
+	getTodos,
+	setActiveRenderSession,
+	sid,
+} from "./state/store.js";
 export { deriveBlocks, detectCycle } from "./state/task-graph.js";
-export type { Task, TaskAction, TaskDetails, TaskStatus } from "./tool/types.js";
-export { TOOL_NAME, TODO_ADD_COMMAND_NAME } from "./tool/types.js";
+export type {
+	Task,
+	TaskAction,
+	TaskDetails,
+	TaskStatus,
+} from "./tool/types.js";
+export { TODO_ADD_COMMAND_NAME, TOOL_NAME } from "./tool/types.js";
 
 // ---------------------------------------------------------------------------
 // Tool registration
@@ -69,6 +83,9 @@ export const DEFAULT_PROMPT_GUIDELINES: string[] = [
 ];
 
 export function registerTodoTool(pi: ExtensionAPI): void {
+	pi.registerEntryRenderer<TaskDetails>(TODO_HISTORY_ENTRY_TYPE, (entry, _opts, theme) =>
+		isTaskDetails(entry.data) ? renderTodoHistory(entry.data, theme) : undefined,
+	);
 	const guidance = validateGuidanceFields(loadConfig().guidance);
 	pi.registerTool({
 		name: TOOL_NAME,
@@ -80,9 +97,14 @@ export function registerTodoTool(pi: ExtensionAPI): void {
 		parameters: TodoParamsSchema,
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			const result = applyTaskMutation(getState(sid(ctx)), params.action, params as TaskMutationParams);
-			commitState(sid(ctx), result.state);
-			return buildToolResult(params.action, params as TaskMutationParams, result.state, result.op);
+			const sessionId = sid(ctx);
+			const result = applyTaskMutation(getState(sessionId), params.action, params as TaskMutationParams);
+			const response = buildToolResult(params.action, params as TaskMutationParams, result.state, result.op);
+			// Nested tool results never enter the branch. Persist a UI-only snapshot
+			// for both direct and codemode calls, without adding model-context tokens.
+			pi.appendEntry(TODO_HISTORY_ENTRY_TYPE, structuredClone(response.details));
+			commitState(sessionId, result.state);
+			return response;
 		},
 
 		// renderCall reflects the FOREGROUND slot, not the calling session's. Pi's
@@ -156,11 +178,11 @@ export function registerTodosCommand(pi: ExtensionAPI): void {
  * Register the `/todo-add <subject>` slash command.
  *
  * Durability model: tasks created via this command are committed to in-memory
- * module state immediately. They are NOT directly written to the branch as a
- * tool-result snapshot. However, the NEXT agent `todo` tool call captures ALL
- * live tasks (including slash-command additions) in its `details.tasks`
- * snapshot. That snapshot is read by `replayFromBranch` on session lifecycle
- * events (start, compact, tree). The task is persisted as soon as the
+ * module state immediately. They are NOT directly written to the branch.
+ * However, the NEXT agent `todo` tool call captures ALL live tasks (including
+ * slash-command additions) in its custom entry and `details.tasks` snapshot.
+ * `replayFromBranch` reads that snapshot on session lifecycle events (start,
+ * compact, tree). The task is persisted as soon as the
  * agent uses the `todo` tool, which typically happens within its next turn
  * when tasks exist. Tasks are at risk of loss only if a session compact
  * or reload occurs before the agent's next `todo` tool call.
@@ -170,10 +192,7 @@ export function registerTodoAddCommand(pi: ExtensionAPI, onUpdate?: () => void):
 		description: "Add a new todo to the current task list",
 		handler: async (args, ctx) => {
 			if (!ctx.hasUI) {
-				ctx.ui.notify(
-					t("command.todo_add.requires_interactive", ERR_TODO_ADD_REQUIRES_INTERACTIVE),
-					"error",
-				);
+				ctx.ui.notify(t("command.todo_add.requires_interactive", ERR_TODO_ADD_REQUIRES_INTERACTIVE), "error");
 				return;
 			}
 			const subject = args.trim();
@@ -182,7 +201,9 @@ export function registerTodoAddCommand(pi: ExtensionAPI, onUpdate?: () => void):
 				return;
 			}
 			const sessionId = sid(ctx);
-			const result = applyTaskMutation(getState(sessionId), "create", { subject });
+			const result = applyTaskMutation(getState(sessionId), "create", {
+				subject,
+			});
 			commitState(sessionId, result.state);
 
 			if (result.op.kind === "error") {

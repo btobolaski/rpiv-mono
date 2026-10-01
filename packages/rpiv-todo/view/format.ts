@@ -1,8 +1,10 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Box, Text } from "@earendil-works/pi-tui";
 import { formatStatusLabel } from "../state/i18n-bridge.js";
-import { selectTaskSubjectById } from "../state/selectors.js";
+import { selectListTasks, selectTaskSubjectById } from "../state/selectors.js";
 import type { TaskState } from "../state/state.js";
+import { deriveBlocks } from "../state/task-graph.js";
+import { formatTaskDetailLines } from "../tool/response-envelope.js";
 import { sanitizeTerminalText } from "../tool/sanitize.js";
 import type { Task, TaskAction, TaskDetails, TaskMutationParams, TaskStatus } from "../tool/types.js";
 
@@ -97,6 +99,52 @@ export function formatCommandTaskLine(t: Task, glyph: string): string {
 	const form = t.status === "in_progress" && t.activeForm ? ` (${sanitizeTerminalText(t.activeForm)})` : "";
 	const block = t.blockedBy?.length ? `    ⛓ ${t.blockedBy.map((id) => `#${id}`).join(",")}` : "";
 	return `  ${glyph} #${t.id} ${sanitizeTerminalText(t.subject)}${form}${block}`;
+}
+
+/** Full, snapshot-based scrollback card; never consults the live task store. */
+export function renderTodoHistory(details: TaskDetails, theme: Theme): Box {
+	let tasks: Task[] = [];
+	if (!details.error) {
+		switch (details.action) {
+			case "create":
+				// The reducer appends each new task last; snapshots preserve that order.
+				tasks = details.tasks.slice(-1);
+				break;
+			case "list":
+				tasks = selectListTasks(
+					details,
+					details.params.includeDeleted === true,
+					(details.params as TaskMutationParams).status,
+				);
+				break;
+			case "update":
+			case "get":
+			case "delete":
+				tasks = details.tasks.filter((task) => task.id === details.params.id);
+				break;
+			case "clear":
+				break;
+		}
+	}
+
+	const lines = [theme.fg("accent", theme.bold(`todo ${details.action}`))];
+	if (details.error) lines.push(theme.fg("error", `Error: ${sanitizeTerminalText(details.error)}`));
+	else if (details.action === "clear") lines.push("Cleared all tasks");
+	else if (tasks.length === 0) lines.push("No tasks");
+
+	const blocks = deriveBlocks(details.tasks);
+	for (const task of tasks) {
+		lines.push(
+			"",
+			`${theme.fg(STATUS_COLOR[task.status], STATUS_GLYPH[task.status])} #${task.id} [${formatStatusLabel(task.status)}] ${sanitizeTerminalText(task.subject)}`,
+		);
+		lines.push(...formatTaskDetailLines(task, blocks.get(task.id) ?? []));
+		if (task.metadata !== undefined) lines.push(`  metadata: ${sanitizeTerminalText(JSON.stringify(task.metadata))}`);
+	}
+
+	const box = new Box(1, 1, (text) => theme.bg("customMessageBg", text));
+	box.addChild(new Text(lines.join("\n"), 0, 0));
+	return box;
 }
 
 // ---------------------------------------------------------------------------

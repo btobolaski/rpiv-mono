@@ -1,12 +1,15 @@
 # rpiv-todo
 
 ## Monorepo Context
+
 Sibling Pi extension in `rpiv-mono`. Lockstep version with the rest of the `@juicesharp/rpiv-*` family — never bump independently. Listed in `siblings.ts`; peer-pinned by `rpiv-pi` as `"*"`.
 
 ## Responsibility
-Claude-Code-parity task management for Pi. Registers a single multiplexed `todo` tool (action-discriminated: create/update/list/get/delete/clear), the `/todos` slash command, a persistent overlay widget mounted above the editor, and a global collapse/expand shortcut for it (`pi.registerShortcut`, default `ctrl+shift+t`; `collapseKey: "off"` skips registration entirely). State is reconstructed by replaying the session branch — no disk persistence.
+
+Claude-Code-parity task management for Pi. Registers a single multiplexed `todo` tool (action-discriminated: create/update/list/get/delete/clear), the `/todos` slash command, a persistent overlay widget mounted above the editor, and a global collapse/expand shortcut for it (`pi.registerShortcut`, default `ctrl+shift+t`; `collapseKey: "off"` skips registration entirely). `registerTodoTool` also registers the `TODO_HISTORY_ENTRY_TYPE` custom-entry renderer for full scrollback task cards. State is reconstructed from session-history snapshots — no separate task files.
 
 ## Dependencies
+
 - **`@earendil-works/pi-coding-agent`** (peer): `ExtensionAPI`, `ExtensionUIContext`, theme/render primitives
 - **`@earendil-works/pi-ai`** (peer): `StringEnum` for action/status enums
 - **`@earendil-works/pi-tui`** (peer): width-safe text helpers, render primitives
@@ -15,9 +18,11 @@ Claude-Code-parity task management for Pi. Registers a single multiplexed `todo`
 - **`typebox`** (dependency — moved from peers so installers that don't materialise peer deps still resolve it): tool parameter schema
 
 ## Consumers
+
 - **Pi extension host** (loads via `pi.extensions: ["./index.ts"]`) and **`rpiv-pi`** (lists in `peerDependencies` and `siblings.ts`)
 
 ## Module Structure
+
 ```
 .                — Composer + tool/command registrars + overlay widget class. Each capability
                    gets a single file at the package root; the composer (index.ts) is pure wiring.
@@ -32,38 +37,47 @@ locales/         — JSON maps registered by index.ts (registerLocalesFromDir); 
 ```
 
 ## Reducer / Store / Replay Split
+
 ```typescript
 // state/state.ts — canonical shape, single source of truth.
-export interface TaskState { tasks: Task[]; nextId: number; }
+export interface TaskState {
+  tasks: Task[];
+  nextId: number;
+}
 
 // state/state-reducer.ts — pure: (state, action, params) → { state, op }.
 // `op` is a closed tagged union (create | update | list | get | delete | clear | error).
-export function applyTaskMutation(state, action, params): ApplyResult { /* ... */ }
+export function applyTaskMutation(state, action, params): ApplyResult {
+  /* ... */
+}
 
 // state/store.ts — per-session slots (Map<sid, TaskState>) + a ctx-less render pointer.
 // Every accessor/seam is keyed by session id so a detached/child session (distinct sid)
 // can never read or clobber another session's tasks.
-export function sid(ctx): string;                // sessionManager.getSessionId() ?? ""
-export function getState(sessionId): TaskState;  // get-or-fresh slot; the four slot writers
+export function sid(ctx): string; // sessionManager.getSessionId() ?? ""
+export function getState(sessionId): TaskState; // get-or-fresh slot; the four slot writers
 // (commitState post-reducer / replaceState replay seam / evictSession / __resetState) — see Architectural Boundaries.
 // Foreground render pointer — which slot the ctx-less readers (overlay, renderCall) show:
 // getRenderState() = slotFor(activeRenderSession); setActiveRenderSession(id) claimed once by
 // first UI start; getActiveRenderSession() read by the index.ts sid-gate; clearActiveRenderSession() on teardown.
 
-// state/replay.ts — pure: walk branch, return fresh TaskState (last-writer-wins).
+// state/replay.ts — pure: latest rpiv-todo-snapshot custom entry, legacy tool-result fallback.
 export function replayFromBranch(ctx): TaskState;
 ```
 
 ## Persistent Widget Mount (Lazy, Idempotent, Auto-hide)
+
 ```typescript
 // Lazy: the FIRST hasUI session_start claims the foreground render pointer (creator-ownership); a child (distinct sid) is sid-gated out of rebinding/disposing it.
 let todoOverlay: TodoOverlay | undefined;
 pi.on("session_start", async (_e, ctx) => {
-    const id = sid(ctx); replaceState(id, replayFromBranch(ctx));   // each session → its OWN slot
-    if (!ctx.hasUI) return;
-    if (getActiveRenderSession() === "") setActiveRenderSession(id);   // no eager ctor
-    if (id !== getActiveRenderSession()) return;   // child: skip rebind
-    uiCtx = ctx.ui; await updateTodoOverlay(true);   // lazy import + task-gated ctor inside
+  const id = sid(ctx);
+  replaceState(id, replayFromBranch(ctx)); // each session → its OWN slot
+  if (!ctx.hasUI) return;
+  if (getActiveRenderSession() === "") setActiveRenderSession(id); // no eager ctor
+  if (id !== getActiveRenderSession()) return; // child: skip rebind
+  uiCtx = ctx.ui;
+  await updateTodoOverlay(true); // lazy import + task-gated ctor inside
 });
 
 // Register-once factory: setWidget(WIDGET_KEY, (tui, theme) => ({ render, invalidate }),
@@ -72,11 +86,12 @@ pi.on("session_start", async (_e, ctx) => {
 ```
 
 ## Architectural Boundaries
+
 - **Status transitions are a single declarative table** — `Record<TaskStatus, ReadonlySet<TaskStatus>>` in `state/invariants.ts`, never an `if/switch` ladder; adding a status is a one-line edit and mistakes surface as data
 - **NO replay from `tool_execution_end`** — `message_end` runs after, so the branch is stale; the widget reads live state via `getRenderState()` (the ctx-less foreground slot — `import { getRenderState } from "./state/store.js"`) instead
-- **`TOOL_NAME` and `WIDGET_KEY` are preserved verbatim** — renaming breaks session-history replay and persisted UI state
+- **`TODO_HISTORY_ENTRY_TYPE`, `TOOL_NAME`, and `WIDGET_KEY` are preserved verbatim** — renaming breaks custom-snapshot replay, legacy tool-result replay, or persisted UI state respectively
 - **Delete is a tombstone** (`status: "deleted"`, terminal) — preserves ids so historic `blockedBy` references still resolve
-- **NO disk persistence** — state derives entirely from the session branch via the `details` envelope
+- **NO separate task files** — state derives from `rpiv-todo-snapshot` custom entries in the session branch, with legacy `details` tool-result snapshots as a fallback
 - **Mutation goes through `store.ts`** — reducer is pure; only `commitState` / `replaceState` / `evictSession` / `__resetState` write the session-slot Map (all keyed by sid); `setActiveRenderSession` / `clearActiveRenderSession` move the foreground pointer (a distinct concept, not a 4th task-state writer)
 - **`session_compact`/`session_tree` share one extracted `replayAndRefresh` handler** (`index.ts`) — swallows ONLY the known stale-ctx error (`isStaleCtxError`: auto-compaction races session disposal); other errors are real replay bugs and propagate; the overlay refresh is sid-gated to the foreground
 - **Overlay teardown is try/finally** — `session_shutdown` always evicts the slot; the foreground's own shutdown (or an unknown/stale sid `""`, treated as foreground) then runs `todoOverlay?.dispose()` with `todoOverlay = undefined` + `clearActiveRenderSession()` in `finally` — `dispose()` can throw on a stale ui proxy, and a surviving pointer would target the already-evicted slot (overlay silently renders empty)

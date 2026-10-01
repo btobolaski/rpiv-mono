@@ -51,9 +51,13 @@ by status, or `/todo-add <subject>` to add a pending task immediately.
 - **The agent keeps working through unfinished todos.** A normal stop with pending
   or in-progress tasks prompts the agent to continue; aborts and non-normal stops
   are left alone.
-- **Tasks survive `/reload` and compaction.** Each tool call carries the full
-  post-mutation snapshot, and the list is replayed from the session branch. No
-  disk writes, nothing to lose.
+- **Full details stay in history.** Every `todo` call adds a scrollback card with
+  the affected task's description, status, activity label, dependencies, owner,
+  and metadata. `list` shows all matching tasks. Cards work for direct calls and
+  calls inside `codemode`, without adding model-context tokens.
+- **Tasks survive `/reload` and compaction.** Each tool call stores a full
+  post-mutation snapshot in the session branch, including calls inside
+  `codemode`. No separate task files.
 - **Finished work gets out of the way.** Completed rows stay visible for the rest
   of the turn, then drop at the start of the next one; the panel disappears
   entirely when the list empties.
@@ -82,11 +86,11 @@ Optional. Create `~/.config/rpiv-todo/config.json` (or
 }
 ```
 
-| Setting | What it does | Default |
-| --- | --- | --- |
-| `maxWidgetLines` | Content rows the overlay may use, heading included. Minimum `3`. Applies on the next repaint. Pi's tool-output expansion mode shows all tasks. | `12` |
-| `collapseKey` | Key that collapses and expands the panel, in Pi keybinding form (`alt+o`, `ctrl+shift+t`). Set `"off"` to register no shortcut. Needs `/reload` to rebind. | `"ctrl+shift+t"` |
-| `guidance` | Replaces the built-in instructions the extension gives the model about when and how to use the todo list. Needs `/reload`. | _(built-ins)_ |
+| Setting          | What it does                                                                                                                                               | Default          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `maxWidgetLines` | Content rows the overlay may use, heading included. Minimum `3`. Applies on the next repaint. Pi's tool-output expansion mode shows all tasks.             | `12`             |
+| `collapseKey`    | Key that collapses and expands the panel, in Pi keybinding form (`alt+o`, `ctrl+shift+t`). Set `"off"` to register no shortcut. Needs `/reload` to rebind. | `"ctrl+shift+t"` |
+| `guidance`       | Replaces the built-in instructions the extension gives the model about when and how to use the todo list. Needs `/reload`.                                 | _(built-ins)_    |
 
 A missing or malformed file falls back to these defaults. `rpiv-todo` only reads
 this file — it never writes one. Full semantics:

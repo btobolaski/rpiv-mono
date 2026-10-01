@@ -9,8 +9,13 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Full scrollback task cards for every `todo` call, including calls inside `codemode`, with descriptions, dependencies, owner, and metadata. Cards use UI-only custom entries and do not enter model context.
 - Automatic continuation guard: when the model stops normally (`stopReason === "stop"`) with any pending or in-progress todos remaining, `rpiv-todo` sends a follow-up message so the agent keeps working. Aborted (`Esc`) and non-normal stop reasons (`length`, `toolUse`, `error`) are not intercepted.
 - New `/todo-add <subject>` slash command for creating a pending todo in the current task list. Successful adds refresh the live overlay.
+
+### Changed
+
+- Task snapshots are persisted as `rpiv-todo-snapshot` session entries, covering codemode calls whose results are not saved. Older branches retain tool-result replay as a fallback; corrupt task snapshots are skipped.
 
 ## [2.9.0] - 2026-09-01
 
@@ -49,6 +54,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.5.0] - 2026-08-13
 
 ### Fixed
+
 - Terminal control characters (ANSI/C1 escape sequences, newlines, bidi overrides) in model-controlled task text — subject, description, activeForm, owner — are now stripped before terminal rendering (#151, #152).
 
 ## [2.4.0] - 2026-08-03
@@ -60,30 +66,36 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [2.2.0] - 2026-07-29
 
 ### Changed
+
 - The todo overlay is now lazy-loaded, deferring its module cost from session start to first render (#108).
 
 ### Fixed
+
 - A model no longer gets trapped in a failure loop when it omits the `status` field from an `update` call after context compaction: the error message now enumerates the mutable fields, the `status` parameter description leads with its mutation role instead of reading like a list filter, and a prompt guideline carries the literal `update {id, status: 'completed'}` call shape as a durable recipe (#137).
 - A transient overlay-load failure during tool execution no longer surfaces as an extension error: the tool result stands, a `[rpiv-todo]`-prefixed warning is logged, and the overlay retries on the next event. A rejected overlay import is no longer cached for the process lifetime, so a late first load after dependency churn recovers instead of staying broken.
 
 ## [2.1.0] - 2026-07-23
 
 ### Changed
+
 - README rewritten to follow the documentation standard shared across all packages.
 - npm tarball now includes the versioned `docs/` reference and no longer ships cover or screenshot art.
 
 ### Fixed
+
 - The todo overlay now follows theme changes live instead of keeping colors from the theme active when it was first rendered, and its color semantics are clearer: in-progress subjects are highlighted, task IDs and metadata are dimmed, and completed/deleted tasks are muted.
 
 ## [2.0.0] - 2026-07-21
 
 ### Added
+
 - Configurable collapse/expand shortcut for the todo overlay via the new `collapseKey` config field (default `ctrl+shift+t`; `off` disables it).
 - Configurable overlay height via the new `maxWidgetLines` config field (default 12, applied on the next repaint).
 - Todo state is now isolated per session, so a detached or child session can no longer read or overwrite another session's tasks.
 - Honor `XDG_CONFIG_HOME` when locating the config file, falling back to the legacy `~/.config` location when the new one is absent.
 
 ### Fixed
+
 - An update that changes nothing now reports `No change` instead of `Updated`, so a model no longer re-issues the same no-op update in a loop.
 - Session shutdown tears the overlay down cleanly even when disposal races a stale terminal context, instead of leaving it rendering empty.
 - Tool registration no longer fails with a missing-module error under package installers that do not materialise peer dependencies.
@@ -91,6 +103,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.20.0] - 2026-06-15
 
 ### Added
+
 - Chinese (`zh`) translations (`locales/zh.json`) (#68).
 
 ## [1.19.1] - 2026-06-10
@@ -98,6 +111,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.19.0] - 2026-06-09
 
 ### Fixed
+
 - The todos overlay renders a trailing blank line so its last row no longer sits flush against the input box. (#65)
 
 ## [1.18.2] - 2026-06-04
@@ -107,6 +121,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.18.0] - 2026-06-04
 
 ### Fixed
+
 - Stale extension context after auto-compaction no longer causes spurious warnings during overlay replay.
 
 ## [1.17.1] - 2026-06-01
@@ -142,11 +157,13 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.11.0] - 2026-05-20
 
 ### Changed
+
 - Relocate npm + MIT badges from the cover area to the License section in README.
 
 ## [1.10.2] - 2026-05-20
 
 ### Changed
+
 - Refresh npm cover (`docs/cover.{svg,png}`) to share the unified card layout used across the `@juicesharp/rpiv-*` family.
 
 ## [1.10.1] - 2026-05-19
@@ -156,6 +173,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.9.2] - 2026-05-19
 
 ### Changed
+
 - Adding a translated locale no longer requires editing the extension entry — drop `locales/<code>.json` next to the existing files and it loads automatically on next start.
 
 ## [1.9.1] - 2026-05-19
@@ -179,6 +197,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.5.2] - 2026-05-13
 
 ### Added
+
 - Configurable LLM guidance overrides via package config.
 
 ## [1.5.1] - 2026-05-13
@@ -202,14 +221,17 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.1.5] - 2026-05-05
 
 ### Changed
+
 - Overlay UX: completed todo items now stay visible until the next agent response starts, then disappear from later overlay renders. Replay-driven lifecycle events (`session_start`, `session_compact`, `session_tree`) reset that per-overlay display memory so replayed completed items can be shown once again.
 
 ## [1.1.4] - 2026-05-03
 
 ### Added
+
 - Localized TUI chrome (overlay heading, `/todos` section headers, status words) via `@juicesharp/rpiv-i18n`. 8 locales out of the box (de, en, es, fr, pt, pt-BR, ru, uk). LLM-facing strings (response envelope, reducer errors) stay English.
 
 ### Changed
+
 - `@juicesharp/rpiv-i18n` is now a soft optional peer (`peerDependenciesMeta.optional: true`). The bridge and module-init `registerStrings` call use a dynamic `await import()` inside try/catch, so a standalone install of just `rpiv-todo` no longer fails with `Cannot find module '@juicesharp/rpiv-i18n'` — the extension stays online with English-only UI when the SDK isn't present, and lights up localization automatically when it is.
 
 ## [1.1.3] - 2026-05-03
@@ -233,32 +255,39 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.0.14] - 2026-05-01
 
 ### Changed
+
 - Cover redesigned as a macOS-style terminal-window screenshot mimicking the real `Todos (2/7)` overlay.
 
 ## [1.0.13] - 2026-05-01
 
 ### Added
+
 - `docs/vertical-cover.{svg,png}` — portrait-orientation hero artwork (1280×800 canvas; PNG downscaled to 320×711).
 
 ### Changed
+
 - Cover canvas extended from 1280×640 to 1280×800 with refreshed crop marks/footer.
 - README hero swapped from `docs/cover.png` to `docs/vertical-cover.png`, rendered at `width="160"`. The `<a>` wrapper around the `<picture>` was removed so the image is no longer a clickable link to the package directory.
 
 ## [1.0.12] - 2026-05-01
 
 ### Added
+
 - `docs/cover.png` — package hero (rasterized from `docs/cover.svg` via `rsvg-convert`, 1280×640).
 
 ### Changed
+
 - README hero: open with a `<picture>`-wrapped `cover.png` above the shield badges so pi.dev's package-card image extractor picks the friendly artwork instead of the npm version shield. Existing `docs/overlay.jpg` screenshot retained below the description.
 
 ## [1.0.11] - 2026-04-30
 
 ### Changed
+
 - Internal refactor: `todo.ts` split into layered modules under `state/`, `tool/`, and `view/`. The reducer, store, replay, task-graph, response envelope, schema, and view formatters each live in their own file; `todo.ts` is now a thin registration shell that re-exports the pre-refactor public surface so `index.ts`, the overlay, and existing tests keep importing from `./todo.js`. `package.json` `files` array updated to ship the new modules (16 production files in the tarball).
 - README rewritten with a user-outcome opener and a new `## Features` section (live overlay, survives `/reload` and compaction, status states, dependency tracking with cycle detection, smart truncation). `package.json` `description` synced.
 
 ### Added
+
 - `ship-manifest.test.ts` — verifies `package.json` `files` covers every production `.ts` module across the package tree, so future module additions can't silently fall out of the npm tarball.
 
 ## [1.0.10] - 2026-04-30
@@ -320,6 +349,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.0] - 2026-04-20
 
 ### Added
+
 - Testability exports: `__resetState()` resets module-level `tasks` + `nextId` to their initial state; `getNextId()` exposes the current id counter alongside existing `getTodos()`. Follows the sibling reset convention (`invalidateSkillIndex`, `clearInjectionState`) used elsewhere in the monorepo. Production behaviour unchanged.
 - Canonical reducer + replay test suites (`todo.reducer.test.ts`, `todo.replay.test.ts`) validating the full Vitest harness shape for downstream packages to follow.
 
@@ -342,4 +372,5 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.6.0] — 2026-04-18
 
 ### Changed
+
 - Consolidated into the `juicesharp/rpiv-mono` monorepo. Version aligned to the rpiv-pi family lockstep starting point. No runtime behavior change from `0.1.2`.

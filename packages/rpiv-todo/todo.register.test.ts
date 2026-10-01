@@ -1,8 +1,11 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { createMockCtx, createMockPi, makeTheme } from "@juicesharp/rpiv-test-utils";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { replayFromBranch } from "./state/replay.js";
+import { getState } from "./state/store.js";
 import { __resetState, registerTodoTool, setActiveRenderSession, type TaskDetails, TOOL_NAME } from "./todo.js";
+import { TODO_HISTORY_ENTRY_TYPE } from "./tool/types.js";
 
 const theme = makeTheme() as unknown as Theme;
 
@@ -13,7 +16,7 @@ function setup() {
 	registerTodoTool(pi);
 	const tool = captured.tools.get(TOOL_NAME);
 	if (!tool) throw new Error("tool not registered");
-	return { tool, captured };
+	return { pi, tool, captured };
 }
 
 async function call(tool: ReturnType<typeof setup>["tool"], params: Record<string, unknown>) {
@@ -53,7 +56,9 @@ describe("registerTodoTool — execute mutates module state", () => {
 		const r1 = await call(tool, { action: "create", subject: "first" });
 		expect((r1!.details as TaskDetails).action).toBe("create");
 		const r2 = await call(tool, { action: "list" });
-		expect(r2?.content[0]).toMatchObject({ text: expect.stringContaining("first") });
+		expect(r2?.content[0]).toMatchObject({
+			text: expect.stringContaining("first"),
+		});
 	});
 
 	it("clear resets module state and nextId", async () => {
@@ -64,6 +69,79 @@ describe("registerTodoTool — execute mutates module state", () => {
 		const d = r?.details as TaskDetails;
 		expect(d.tasks).toEqual([]);
 		expect(d.nextId).toBe(1);
+	});
+});
+
+describe("registerTodoTool — history snapshots", () => {
+	it("persists and renders details without relying on a tool result or model message", async () => {
+		const { pi, tool } = setup();
+		const response = await call(tool, {
+			action: "create",
+			subject: "history task",
+			description: "full description",
+			metadata: { nested: { value: 1 } },
+		});
+		expect(pi.appendEntry).toHaveBeenCalledTimes(1);
+		expect(pi.appendEntry).toHaveBeenCalledWith(TODO_HISTORY_ENTRY_TYPE, response!.details);
+		expect(pi.sendMessage).not.toHaveBeenCalled();
+		const [customType, data] = vi.mocked(pi.appendEntry).mock.calls[0];
+		const [rendererType, renderer] = vi.mocked(pi.registerEntryRenderer).mock.calls[0];
+		expect(rendererType).toBe(customType);
+		expect(
+			renderer({ data } as never, { expanded: false }, theme)
+				?.render(100)
+				.join("\n"),
+		).toContain("description: full description");
+
+		// Codemode may discard the result; the entry alone restores state.
+		__resetState();
+		const replayed = replayFromBranch(createMockCtx({ branch: [{ type: "custom", customType, data } as never] }));
+		expect(replayed.tasks[0].description).toBe("full description");
+		expect(replayed.nextId).toBe(2);
+	});
+
+	it("keeps historical cards independent of later updates and argument mutation", async () => {
+		const { pi, tool } = setup();
+		const params = {
+			action: "create",
+			subject: "original",
+			metadata: { nested: { value: 1 } },
+		};
+		await call(tool, params);
+		const [, snapshot] = vi.mocked(pi.appendEntry).mock.calls[0];
+		params.metadata.nested.value = 99;
+		await call(tool, { action: "update", id: 1, subject: "renamed" });
+		const renderer = vi.mocked(pi.registerEntryRenderer).mock.calls[0][1];
+		const text = renderer({ data: snapshot } as never, { expanded: false }, theme)
+			?.render(100)
+			.join("\n");
+		expect(text).toContain("original");
+		expect(text).toContain('"value":1');
+		expect(text).not.toContain("renamed");
+	});
+
+	it("does not commit a mutation if snapshot persistence fails", async () => {
+		const { pi, tool } = setup();
+		vi.mocked(pi.appendEntry).mockImplementationOnce(() => {
+			throw new Error("storage failed");
+		});
+		await expect(call(tool, { action: "create", subject: "not committed" })).rejects.toThrow("storage failed");
+		expect(getState("test-session").tasks).toEqual([]);
+	});
+
+	it("declines malformed history entries", () => {
+		const { pi } = setup();
+		const renderer = vi.mocked(pi.registerEntryRenderer).mock.calls[0][1];
+		expect(renderer({ data: null } as never, { expanded: false }, theme)).toBeUndefined();
+		expect(
+			renderer(
+				{
+					data: { action: "list", params: {}, tasks: [{ id: 1, subject: 42, status: "pending" }], nextId: 2 },
+				} as never,
+				{ expanded: false },
+				theme,
+			),
+		).toBeUndefined();
 	});
 });
 
@@ -132,7 +210,11 @@ describe("registerTodoTool — renderResult", () => {
 	it("update renders the transitioned status (in progress)", async () => {
 		const { tool } = setup();
 		await call(tool, { action: "create", subject: "a" });
-		const r = await call(tool, { action: "update", id: 1, status: "in_progress" });
+		const r = await call(tool, {
+			action: "update",
+			id: 1,
+			status: "in_progress",
+		});
 		const node = tool.renderResult?.(r as never, {} as never, theme, undefined as never) as unknown as Text;
 		const text = (node as unknown as { text: string }).text;
 		expect(text).toContain("in progress");

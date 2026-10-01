@@ -1,6 +1,13 @@
 import type { Task, TaskStatus } from "../tool/types.js";
 import type { TaskState } from "./state.js";
 
+/** Shared tombstone/status filtering for tool output and history cards. */
+export function selectListTasks(state: TaskState, includeDeleted: boolean, status?: TaskStatus): Task[] {
+	return state.tasks.filter(
+		(task) => (includeDeleted || task.status !== "deleted") && (!status || task.status === status),
+	);
+}
+
 /** Tasks excluding deleted tombstones — the canonical "what's visible". */
 export function selectVisibleTasks(state: TaskState): readonly Task[] {
 	return state.tasks.filter((t) => t.status !== "deleted");

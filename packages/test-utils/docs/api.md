@@ -4,23 +4,27 @@ Every export of `@juicesharp/rpiv-test-utils`, grouped by module. `index.ts` re-
 modules, so everything below is reachable from a single bare-name import:
 
 ```ts
-import { createMockPi, makeTheme, stubFetch } from "@juicesharp/rpiv-test-utils";
+import {
+  createMockPi,
+  makeTheme,
+  stubFetch,
+} from "@juicesharp/rpiv-test-utils";
 ```
 
 `verifyShipManifest` has its own page: [ship-manifest.md](./ship-manifest.md).
 
 ## `pi.ts` — Pi `ExtensionAPI` doubles
 
-| Export | Signature |
-| --- | --- |
-| `createMockPi` | `(options?: CreateMockPiOptions) => { pi: ExtensionAPI; captured: CapturedPi }` |
-| `createMockUI` | `(overrides?: Partial<ExtensionUIContext>) => MockUI` |
+| Export                     | Signature                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `createMockPi`             | `(options?: CreateMockPiOptions) => { pi: ExtensionAPI; captured: CapturedPi }`                                       |
+| `createMockUI`             | `(overrides?: Partial<ExtensionUIContext>) => MockUI`                                                                 |
 | `createMockSessionManager` | `(branch?: SessionEntry[], sessionId?: string) => { getBranch, getEntries, getLeafId, getSessionFile, getSessionId }` |
-| `createMockModelRegistry` | `(models?: Model<Api>[]) => { find, getAvailable, getApiKeyAndHeaders }` |
-| `createMockCtx` | `(opts?: MockCtxOptions) => ExtensionContext` |
-| `createMockCommandCtx` | `(opts?: MockCtxOptions) => ExtensionCommandContext & WorkflowHostContext` |
-| `createMockSessionChain` | `(opts: MockSessionChainOptions) => MockSessionChain` |
-| `mockAssistantMessage` | `(text: string, stopReason?: "stop" \| "length" \| "toolUse" \| "error" \| "aborted") => unknown` |
+| `createMockModelRegistry`  | `(models?: Model<Api>[]) => { find, getAvailable, getApiKeyAndHeaders }`                                              |
+| `createMockCtx`            | `(opts?: MockCtxOptions) => ExtensionContext`                                                                         |
+| `createMockCommandCtx`     | `(opts?: MockCtxOptions) => ExtensionCommandContext & WorkflowHostContext`                                            |
+| `createMockSessionChain`   | `(opts: MockSessionChainOptions) => MockSessionChain`                                                                 |
+| `mockAssistantMessage`     | `(text: string, stopReason?: "stop" \| "length" \| "toolUse" \| "error" \| "aborted") => unknown`                     |
 
 Types: `CapturedShortcut`, `CapturedPi`, `MockPi`, `CreateMockPiOptions`, `MockUI`, `MockCtxOptions`,
 `MockSessionStep`, `MockSessionChainOptions`, `MockSessionChain`.
@@ -29,19 +33,19 @@ Types: `CapturedShortcut`, `CapturedPi`, `MockPi`, `CreateMockPiOptions`, `MockU
 
 `captured` is a `CapturedPi` with eight buckets:
 
-| Bucket | Filled by | Shape |
-| --- | --- | --- |
-| `tools` | `registerTool(tool)` | `Map<string, ToolDefinition>` |
-| `commands` | `registerCommand(name, cmd)` | `Map<string, Omit<RegisteredCommand, "name" \| "sourceInfo">>` |
-| `shortcuts` | `registerShortcut(keyId, opts)` | `Map<string, CapturedShortcut>` |
-| `flags` | `registerFlag(name, value)` | `Map<string, unknown>` |
-| `events` | `on(event, handler)` | `Map<string, Array<(...args) => unknown>>` |
-| `eventsEmitted` | `events.emit(channel, data)` | `Map<string, unknown[]>` |
-| `activeTools` | `registerTool`, `setActiveTools` | `string[]` |
-| `allTools` | read by `getAllTools()` | `ToolInfo[]` |
+| Bucket          | Filled by                        | Shape                                                          |
+| --------------- | -------------------------------- | -------------------------------------------------------------- |
+| `tools`         | `registerTool(tool)`             | `Map<string, ToolDefinition>`                                  |
+| `commands`      | `registerCommand(name, cmd)`     | `Map<string, Omit<RegisteredCommand, "name" \| "sourceInfo">>` |
+| `shortcuts`     | `registerShortcut(keyId, opts)`  | `Map<string, CapturedShortcut>`                                |
+| `flags`         | `registerFlag(name, value)`      | `Map<string, unknown>`                                         |
+| `events`        | `on(event, handler)`             | `Map<string, Array<(...args) => unknown>>`                     |
+| `eventsEmitted` | `events.emit(channel, data)`     | `Map<string, unknown[]>`                                       |
+| `activeTools`   | `registerTool`, `setActiveTools` | `string[]`                                                     |
+| `allTools`      | read by `getAllTools()`          | `ToolInfo[]`                                                   |
 
 Spied `ExtensionAPI` members: `registerTool`, `registerCommand`, `registerShortcut`, `registerFlag`,
-`getFlag`, `on`, `sendMessage`, `sendUserMessage`, `exec`, `getActiveTools`, `setActiveTools`,
+`getFlag`, `on`, `registerEntryRenderer`, `appendEntry`, `sendMessage`, `sendUserMessage`, `exec`, `getActiveTools`, `setActiveTools`,
 `getAllTools`, `getThinkingLevel`, `events.emit`, `events.on`, `getCommands`. Non-empty defaults:
 `exec()` → `{ stdout: "", stderr: "", code: 0, killed: false }`, `getThinkingLevel()` → `"medium"`.
 Anything you pass in `options` spreads over the defaults and wins.
@@ -59,18 +63,18 @@ Returns `vi.fn()` spies for the eleven `ExtensionUIContext` members tests actual
 
 ### `MockCtxOptions`
 
-| Option | Type | Default |
-| --- | --- | --- |
-| `hasUI` | `boolean` | `false` |
-| `mode` | `string` | omitted (`"rpc"` for ACP hosts) |
-| `cwd` | `string` | `"/tmp/test-cwd"` |
-| `model` | `Model<Api>` | omitted |
-| `branch` | `SessionEntry[]` | `[]` |
-| `models` | `Model<Api>[]` | `[]` |
-| `ui` | `Partial<ExtensionUIContext>` | `{}` |
-| `maxConcurrency` | `number` | `1` (sequential) |
-| `sessionId` | `string` | `"test-session"` |
-| `childSessionId` | `string` | `` `${sessionId}-child` `` |
+| Option           | Type                          | Default                         |
+| ---------------- | ----------------------------- | ------------------------------- |
+| `hasUI`          | `boolean`                     | `false`                         |
+| `mode`           | `string`                      | omitted (`"rpc"` for ACP hosts) |
+| `cwd`            | `string`                      | `"/tmp/test-cwd"`               |
+| `model`          | `Model<Api>`                  | omitted                         |
+| `branch`         | `SessionEntry[]`              | `[]`                            |
+| `models`         | `Model<Api>[]`                | `[]`                            |
+| `ui`             | `Partial<ExtensionUIContext>` | `{}`                            |
+| `maxConcurrency` | `number`                      | `1` (sequential)                |
+| `sessionId`      | `string`                      | `"test-session"`                |
+| `childSessionId` | `string`                      | `` `${sessionId}-child` ``      |
 
 Other ctx stub defaults: `getSessionFile()` → `"/tmp/test-session.jsonl"`, `isIdle()` → `true`,
 `getApiKeyAndHeaders()` → `{ ok: true, apiKey: "test-key", headers: {} }`, `confirm()` → `true`,
@@ -86,12 +90,12 @@ swap. Use it when your test mocks the runner or never spawns for real.
 Scripts a queue of child sessions. Every `spawnChild` call — on the outer ctx or on a child handed
 to a prior `withSession` — dequeues one `MockSessionStep`.
 
-| `MockSessionStep` field | Effect |
-| --- | --- |
-| `branch?: unknown[]` | Entries the child's `sessionManager.getBranch()` returns |
-| `cancelled?: boolean` | `spawnChild` **rejects** without invoking `withSession`; mutually exclusive with `branch` |
-| `toolTimeout?: { reason: string }` | Child ctx's `toolTimeout()` reports this reason (watchdog soft-halt routing) |
-| `sessionFile?: string` | The child's `getSessionFile()`; needed when a later `sessionPolicy: "continue"` stage must fork a real file |
+| `MockSessionStep` field            | Effect                                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `branch?: unknown[]`               | Entries the child's `sessionManager.getBranch()` returns                                                    |
+| `cancelled?: boolean`              | `spawnChild` **rejects** without invoking `withSession`; mutually exclusive with `branch`                   |
+| `toolTimeout?: { reason: string }` | Child ctx's `toolTimeout()` reports this reason (watchdog soft-halt routing)                                |
+| `sessionFile?: string`             | The child's `getSessionFile()`; needed when a later `sessionPolicy: "continue"` stage must fork a real file |
 
 `MockSessionChainOptions` extends `MockCtxOptions` with `steps`, an optional `pi`, and `outerBranch`
 (pre-populated entries for the outer ctx, so `branchOffset` slicing is exercised).
@@ -116,13 +120,13 @@ A `WorkflowHostContext` double with no Pi import, built to prove parallel-fanout
 end. It deliberately deviates from the `{ pi, captured }` shape and uses plain closures rather than
 `vi.fn()`.
 
-| Option | Default |
-| --- | --- |
-| `maxConcurrency` | `1` |
-| `cwd` | `"/tmp/fake-concurrent-cwd"` |
-| `hasUI` | `false` |
-| `gate` | `false` — when `true`, every spawn blocks until `release()` |
-| `bucket` | `"audits"` |
+| Option                    | Default                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `maxConcurrency`          | `1`                                                                                    |
+| `cwd`                     | `"/tmp/fake-concurrent-cwd"`                                                           |
+| `hasUI`                   | `false`                                                                                |
+| `gate`                    | `false` — when `true`, every spawn blocks until `release()`                            |
+| `bucket`                  | `"audits"`                                                                             |
 | `childBranch(rec, index)` | one assistant message reading `` `wrote .rpiv/artifacts/${bucket}/unit-${index}.md` `` |
 
 The host reports `ctx`, `spawns: FakeSpawnRecord[]`, `maxActive` (peak in-flight), `active()`,
@@ -147,16 +151,16 @@ await run;
 
 ## `session.ts` — synthetic transcripts
 
-| Export | Signature |
-| --- | --- |
-| `makeUserMessage` | `(text: string) => UserMessage` |
-| `makeAssistantMessage` | `(input: AssistantMessageInput) => AssistantMessage` |
-| `makeToolResult` | `(input: ToolResultInput) => ToolResultMessage` |
-| `makeMessageEntry` | `(message: Message) => SessionEntry` |
-| `buildSessionEntries` | `(messages: Message[]) => SessionEntry[]` |
-| `buildLlmMessages` | `(messages: Message[]) => Message[]` — keeps `user`, `assistant`, `toolResult` |
-| `makeTodoToolResult` | `(details: unknown, text?: string) => ToolResultMessage` — `text` defaults to `"ok"` |
-| `makeInflightAdvisorAssistant` | `() => AssistantMessage` — one `advisor` tool call, id `"advisor-inflight"` |
+| Export                         | Signature                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| `makeUserMessage`              | `(text: string) => UserMessage`                                                      |
+| `makeAssistantMessage`         | `(input: AssistantMessageInput) => AssistantMessage`                                 |
+| `makeToolResult`               | `(input: ToolResultInput) => ToolResultMessage`                                      |
+| `makeMessageEntry`             | `(message: Message) => SessionEntry`                                                 |
+| `buildSessionEntries`          | `(messages: Message[]) => SessionEntry[]`                                            |
+| `buildLlmMessages`             | `(messages: Message[]) => Message[]` — keeps `user`, `assistant`, `toolResult`       |
+| `makeTodoToolResult`           | `(details: unknown, text?: string) => ToolResultMessage` — `text` defaults to `"ok"` |
+| `makeInflightAdvisorAssistant` | `() => AssistantMessage` — one `advisor` tool call, id `"advisor-inflight"`          |
 
 `AssistantMessageInput` is `{ text?, toolCalls? }`; `ToolResultInput` is
 `{ toolCallId?, toolName, text?, details?, isError? }`, where `toolCallId` defaults to
@@ -167,11 +171,11 @@ internal discriminators. Keeping the casts here is the point — your test file 
 
 ## `contract.ts` — tool-contract assertions
 
-| Export | Signature |
-| --- | --- |
-| `assertToolContract` | `(tool: ToolDefinition, expected: ToolContract) => void` |
-| `describeRegisteredTools` | `(factory: (pi: ExtensionAPI) => void \| Promise<void>) => Promise<ToolDefinition[]>` |
-| `roundTripBranchState` | `<TDetails>(spec: BranchRoundTripSpec<TDetails>) => Promise<{ before: unknown; after: unknown }>` |
+| Export                    | Signature                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `assertToolContract`      | `(tool: ToolDefinition, expected: ToolContract) => void`                                          |
+| `describeRegisteredTools` | `(factory: (pi: ExtensionAPI) => void \| Promise<void>) => Promise<ToolDefinition[]>`             |
+| `roundTripBranchState`    | `<TDetails>(spec: BranchRoundTripSpec<TDetails>) => Promise<{ before: unknown; after: unknown }>` |
 
 `ToolContract` is `{ name, requiredFields, optionalFields? }`. `assertToolContract` checks the name,
 a non-empty string description, a callable `execute`, `parameters.type === "object"`, and an exact
@@ -203,11 +207,11 @@ repo's `unstubGlobals: true` restores it automatically between tests.
 `GitExecSpec` is `{ branch?, commit?, user?, userError? }`. The returned spy answers three git
 invocations and returns an empty success for everything else (including non-`git` commands):
 
-| Args | Result |
-| --- | --- |
-| `rev-parse --abbrev-ref HEAD` | `stdout: "<branch>\n"` |
-| `rev-parse --short HEAD` | `stdout: "<commit>\n"` |
-| `config user.name` | `stdout: "<user>\n"`, or throws `userError` when set |
+| Args                          | Result                                               |
+| ----------------------------- | ---------------------------------------------------- |
+| `rev-parse --abbrev-ref HEAD` | `stdout: "<branch>\n"`                               |
+| `rev-parse --short HEAD`      | `stdout: "<commit>\n"`                               |
+| `config user.name`            | `stdout: "<user>\n"`, or throws `userError` when set |
 
 Results use the real `ExecResult` shape: `{ stdout, stderr, code, killed }`.
 

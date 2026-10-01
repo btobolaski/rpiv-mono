@@ -1,0 +1,11 @@
+[formatter.biome]
+command = "npx"
+options = ["--no-install", "biome", "check", "--write", "--error-on-warnings"]
+includes = ["*.ts", "*.js", "*.mjs", "*.css", "*.html"]
+excludes = ["**/node_modules/**", "**/dist/**", "**/.pi/**", "**/.rpiv/**", "**/.astro/**"]
+
+[formatter.prettier]
+command = "prettier"
+options = ["--write"]
+includes = ["*.md"]
+excludes = ["**/node_modules/**", "**/dist/**", "**/.pi/**", "**/.rpiv/artifacts/**"]

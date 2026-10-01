@@ -10,6 +10,7 @@ import { type Static, Type } from "typebox";
 
 export const TOOL_NAME = "todo";
 export const TOOL_LABEL = "Todo";
+export const TODO_HISTORY_ENTRY_TYPE = "rpiv-todo-snapshot";
 export const COMMAND_NAME = "todos";
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,23 @@ export type TaskStatus = "pending" | "in_progress" | "completed" | "deleted";
 
 export type TaskAction = "create" | "update" | "list" | "get" | "delete" | "clear";
 
+// Exhaustive registries drive both schema enums and persisted-value guards.
+export const TASK_STATUSES = {
+	pending: true,
+	in_progress: true,
+	completed: true,
+	deleted: true,
+} satisfies Record<TaskStatus, true>;
+
+export const TASK_ACTIONS = {
+	create: true,
+	update: true,
+	list: true,
+	get: true,
+	delete: true,
+	clear: true,
+} satisfies Record<TaskAction, true>;
+
 export interface Task {
 	id: number;
 	subject: string;
@@ -47,8 +65,8 @@ export interface Task {
 
 /**
  * Persistence + replay snapshot. Every successful `todo` tool call returns this
- * shape under `details`; `state/replay.ts` reads the latest one from the branch
- * to reconstruct module state. Field order and field names are pinned by
+ * shape under `details` and in a UI-only custom entry. `state/replay.ts` prefers
+ * the latest custom snapshot, falling back to tool results for older branches. Field order and field names are pinned by
  * cross-version replay compatibility.
  */
 export interface TaskDetails {
@@ -86,7 +104,7 @@ export interface TaskMutationParams {
 // ---------------------------------------------------------------------------
 
 export const TodoParamsSchema = Type.Object({
-	action: StringEnum(["create", "update", "list", "get", "delete", "clear"] as const),
+	action: StringEnum(Object.keys(TASK_ACTIONS) as TaskAction[]),
 	subject: Type.Optional(Type.String({ description: "Task subject line (required for create)" })),
 	description: Type.Optional(Type.String({ description: "Long-form task description" })),
 	activeForm: Type.Optional(
@@ -95,7 +113,7 @@ export const TodoParamsSchema = Type.Object({
 		}),
 	),
 	status: Type.Optional(
-		StringEnum(["pending", "in_progress", "completed", "deleted"] as const, {
+		StringEnum(Object.keys(TASK_STATUSES) as TaskStatus[], {
 			description:
 				"Set this task's status (update): one of pending, in_progress, completed, deleted. When action is list, filters returned tasks by this status.",
 		}),
